@@ -85,7 +85,7 @@ def forward_interpolate(flow):
 
     x1 = x0 + dx
     y1 = y0 + dy
-    
+
     x1 = x1.reshape(-1)
     y1 = y1.reshape(-1)
     dx = dx.reshape(-1)
@@ -133,3 +133,23 @@ def coords_grid(batch, ht, wd):
 def upflow8(flow, mode='bilinear'):
     new_size = (8 * flow.shape[2], 8 * flow.shape[3])
     return  8 * F.interpolate(flow, size=new_size, mode=mode, align_corners=True)
+
+
+def compute_out_of_boundary_mask(flow):
+    # flow: [B, 2, H, W]
+    assert flow.dim() == 4 and flow.size(1) == 2
+    b, _, h, w = flow.shape
+    init_coords = coords_grid(b, h, w).to(flow.device)
+    corres = init_coords + flow  # [B, 2, H, W]
+
+    max_w = w - 1
+    max_h = h - 1
+
+    valid_mask = (corres[:, 0] >= 0) & (corres[:, 0] <= max_w) & (corres[:, 1] >= 0) & (corres[:, 1] <= max_h)
+
+    # in case very large flow
+    flow_mask = (flow[:, 0].abs() <= max_w) & (flow[:, 1].abs() <= max_h)
+
+    valid_mask = valid_mask & flow_mask
+
+    return valid_mask  # [B, H, W]

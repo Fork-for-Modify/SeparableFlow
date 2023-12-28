@@ -1,0 +1,36 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: File",
+            "type": "python",
+            "request": "launch",
+            "program": "evaluate_inr.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--dataset",
+                "sintel_inr",
+                "--model",
+                "checkpoints/sepflow_sintel.pth",
+                "--image_root",
+                "/ssd/0/yrz/Dataset/Sintel_INR/Sintel_custom_test_ratio_1_steps_20000_dec/",
+                "--flow_root",
+                "/ssd/0/yrz/Dataset/Sintel_INR/Sintel_custom_test_resized_flows/",
+                "--occlu_root",
+                "/ssd/0/yrz/Dataset/Sintel_INR/Sintel_custom_test_resized_occlusions/"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

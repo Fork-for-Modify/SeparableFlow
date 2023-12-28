@@ -21,7 +21,7 @@ import time
 import matplotlib.pyplot as plt
 from sepflow import SepFlow
 import evaluate
-import datasets
+import datasets_inr
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import InputPadder, forward_interpolate
 
@@ -55,7 +55,7 @@ parser.add_argument('--threads', type=int, default=1, help='number of threads fo
 parser.add_argument('--manual_seed', type=int, default=1234, help='random seed to use. Default=123')
 parser.add_argument('--shift', type=int, default=0, help='random shift of left image. Default=0')
 parser.add_argument('--data_path', type=str, default='/export/work/feihu/flow/SceneFlow/', help="data root")
-parser.add_argument('--save_path', type=str, default='./checkpoints/', help="location to save models")
+parser.add_argument('--save_path', type=str, default='./results/', help="location to save models")
 parser.add_argument('--gpu',  default='0,1,2,3,4,5,6,7', type=str, help="gpu idxs")
 parser.add_argument('--workers', type=int, default=16, help="workers")
 parser.add_argument('--world_size', type=int, default=1, help="world_size")
@@ -79,6 +79,9 @@ parser.add_argument('--dropout', type=float, default=0.0)
 parser.add_argument('--gamma', type=float, default=0.8, help='exponential weighting')
 parser.add_argument('--add_noise', action='store_true')
 parser.add_argument('--small', action='store_true', help='use small model')
+parser.add_argument('--image_root', help="images in dataset")
+parser.add_argument('--flow_root', help="flows in dataset")
+parser.add_argument('--occlu_root', default=None, help="occlusion maps in dataset")
 #parser.add_argument('--smoothl1', action='store_true', help='use smooth l1 loss')
 
 MAX_FLOW = 400
@@ -299,29 +302,21 @@ def main_worker(gpu, ngpus_per_node, argss):
             if main_process():
                 print("=> no checkpoint found at '{}'".format(args.resume))
 
-    train_set = datasets.fetch_dataloader(args)
-    val_set = datasets.KITTI(split='training')
-    val_set3 = datasets.FlyingChairs(split='validation')
-    val_set2_2 = datasets.MpiSintel(split='training', dstype='final')
-    val_set2_1 = datasets.MpiSintel(split='training', dstype='clean')
+    train_set = datasets_inr.fetch_dataloader(args)
+    # val_set2_2 = datasets_inr.MpiSintel(split='training', dstype='final')
+    # val_set2_1 = datasets_inr.MpiSintel(split='training', dstype='clean')
     sys.stdout.flush()
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_set)
-        val_sampler = torch.utils.data.distributed.DistributedSampler(val_set)
-        val_sampler2_2 = torch.utils.data.distributed.DistributedSampler(val_set2_2)
-        val_sampler2_1 = torch.utils.data.distributed.DistributedSampler(val_set2_1)
-        val_sampler3 = torch.utils.data.distributed.DistributedSampler(val_set3)
+        # val_sampler2_2 = torch.utils.data.distributed.DistributedSampler(val_set2_2)
+        # val_sampler2_1 = torch.utils.data.distributed.DistributedSampler(val_set2_1)
     else:
         train_sampler = None
-        val_sampler = None
-        val_sampler2_1 = None
-        val_sampler2_2 = None
-        val_sampler3 = None
+        # val_sampler2_1 = None
+        # val_sampler2_2 = None
     training_data_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batchSize, shuffle=(train_sampler is None), num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
-    val_data_loader = torch.utils.data.DataLoader(val_set, batch_size=args.testBatchSize, shuffle=False, num_workers=args.workers//2, pin_memory=True, sampler=val_sampler)
-    val_data_loader2_2 = torch.utils.data.DataLoader(val_set2_2, batch_size=args.testBatchSize, shuffle=False, num_workers=args.workers//2, pin_memory=True, sampler=val_sampler2_2)
-    val_data_loader2_1 = torch.utils.data.DataLoader(val_set2_1, batch_size=args.testBatchSize, shuffle=False, num_workers=args.workers//2, pin_memory=True, sampler=val_sampler2_1)
-    val_data_loader3 = torch.utils.data.DataLoader(val_set3, batch_size=args.testBatchSize, shuffle=False, num_workers=args.workers//2, pin_memory=True, sampler=val_sampler3)
+    # val_data_loader2_2 = torch.utils.data.DataLoader(val_set2_2, batch_size=args.testBatchSize, shuffle=False, num_workers=args.workers//2, pin_memory=True, sampler=val_sampler2_2)
+    # val_data_loader2_1 = torch.utils.data.DataLoader(val_set2_1, batch_size=args.testBatchSize, shuffle=False, num_workers=args.workers//2, pin_memory=True, sampler=val_sampler2_1)
 
     error = 100
     args.nEpochs = args.num_steps // len(training_data_loader) + 1
@@ -339,21 +334,15 @@ def main_worker(gpu, ngpus_per_node, argss):
                      'scheduler' : scheduler.state_dict(),
                  }, False)
 
-        if args.stage == 'chairs':
-            loss = val(val_data_loader3, model, split='chairs')
-        elif args.stage == 'sintel' or args.stage == 'things':
-            loss_tmp = val(val_data_loader2_1, model, split='sintel', iters=32)
-            loss_tmp = val(val_data_loader2_2, model, split='sintel', iters=32)
-            loss_tmp = val(val_data_loader, model, split='kitti')
-        elif args.stage == 'kitti':
-            loss_tmp = val(val_data_loader, model, split='kitti')
+        # if  args.validation and args.stage == 'sintel_inr':
+        #     loss_tmp = val(val_data_loader2_1, model, split='sintel', iters=32)
+        #     loss_tmp = val(val_data_loader2_2, model, split='sintel', iters=32)
+
 
     if main_process():
         save_checkpoint(args.save_path, args.nEpochs,{
                 'state_dict': model.state_dict()
             }, True)
-
-
 
 
 def train(training_data_loader, model, optimizer, scheduler, logger, epoch):
