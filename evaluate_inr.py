@@ -77,7 +77,7 @@ def validate_sintel_inr(model, image_root, flow_root,occlu_root=None, iters=32):
             flow_pre_png = flow_viz.flow_to_image(flow.permute(1, 2, 0).numpy())
             flow_gt_png = flow_viz.flow_to_image(flow_gt.permute(1, 2, 0).numpy())
             # save_image(torch.from_numpy(flow_pre_png).permute(2, 0, 1)/255, f'logs/test/{dstype}/flow_pre_{val_id}.png')
-            save_image([torch.from_numpy(flow_pre_png).permute(2, 0, 1)/255,torch.from_numpy(flow_gt_png).permute(2, 0, 1)/255], f'logs/test/{dstype}/flow_res_{val_id}.png')
+            save_image([torch.from_numpy(flow_pre_png).permute(2, 0, 1)/255,torch.from_numpy(flow_gt_png).permute(2, 0, 1)/255], f'{args.save_path}/{dstype}/flow_res_{val_id}.png')
 
             epe = torch.sum((flow - flow_gt)**2, dim=0).sqrt()
             epe_list.append(epe.view(-1).numpy())
@@ -108,7 +108,7 @@ def validate_sintel_inr(model, image_root, flow_root,occlu_root=None, iters=32):
             print('===> Validatation Sintel (%s): all epe: %.3f' % (dstype, epe))
 
 
-    with open('logs/test/sintel_inr.txt', 'w') as f:
+    with open(f'{args.save_path}/sintel_inr.txt', 'w') as f:
         f.write(str(results))
 
     return results
@@ -122,6 +122,7 @@ if __name__ == '__main__':
     parser.add_argument('--image_root', help="images in dataset")
     parser.add_argument('--flow_root', help="flows in dataset")
     parser.add_argument('--occlu_root', default=None, help="occlusion maps in dataset")
+    parser.add_argument('--save_path', default='./runs/test', help='save dir')
     parser.add_argument('--small', action='store_true', help='use small model')
     parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
     parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
@@ -135,8 +136,8 @@ if __name__ == '__main__':
     print(args)
 
     # create output directory
-    os.makedirs('results/test/clean', exist_ok=True)
-    os.makedirs('results/test/final', exist_ok=True)
+    os.makedirs(os.path.join(args.save_path,'clean'), exist_ok=True)
+    os.makedirs(os.path.join(args.save_path,'final'), exist_ok=True)
 
     model.cuda()
     model.eval()

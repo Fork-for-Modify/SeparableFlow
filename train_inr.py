@@ -196,11 +196,14 @@ def find_free_port():
     sock.close()
     # NOTE: there is still a chance the port could be taken by other processes.
     return port
+
+
 def main():
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     args.gpu = (args.gpu).split(',')
     torch.backends.cudnn.benchmark = True
+    os.makedirs(args.save_path, exist_ok=True)
    # os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(x) for x in args.gpu.split(','))
     #args.distributed = args.world_size > 1 or args.multiprocessing_distributed
     if args.manual_seed is not None:
